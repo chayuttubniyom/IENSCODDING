@@ -1,0 +1,273 @@
+#include <ESP8266WiFi.h>
+#include <ESP8266WebServer.h>
+#include <ArduinoOTA.h>
+
+int PWM_A = D1;
+int PWM_B = D2;
+int DIR_A = D3;
+int DIR_B = D4;
+
+const int buzPin = D5;
+const int ledPin = D8;
+const int wifiLedPin = D0;
+
+String command;
+int SPEED = 225;
+int speed_Coeff = 5;
+
+ESP8266WebServer server(80);
+
+String hostname("WIFICAR01");
+IPAddress local_IP(192, 168, 1, 1);
+IPAddress gateway(192, 168, 4, 9);
+IPAddress subnet(255, 255, 255, 0);
+
+unsigned long previousMillis = 0;
+
+void setup() {
+  Serial.begin(115200); // เริ่มการสื่อสารผ่าน Serial
+  Serial.println();
+  Serial.println("WiFi Robot Remote Control Mode");
+  Serial.println("--------------------------------------");
+
+  // ตั้งค่าสถานะเริ่มต้นของขา GPIO
+  pinMode(buzPin, OUTPUT);
+  pinMode(ledPin, OUTPUT);
+  pinMode(wifiLedPin, OUTPUT);
+  digitalWrite(buzPin, LOW);
+  digitalWrite(ledPin, LOW);
+  digitalWrite(wifiLedPin, HIGH);
+
+  pinMode(PWM_A, OUTPUT);
+  pinMode(PWM_B, OUTPUT);
+  pinMode(DIR_A, OUTPUT);
+  pinMode(DIR_B, OUTPUT);
+
+  digitalWrite(DIR_A, LOW);
+  digitalWrite(DIR_B, LOW);
+  analogWrite(PWM_A, 0);
+  analogWrite(PWM_B, 0);
+
+  String chip_id = String(ESP.getChipId(), HEX); // อ่านรหัสชิป
+  int i = chip_id.length() - 4;
+  chip_id = chip_id.substring(i);
+  chip_id = "wificar-" + chip_id; // สร้างชื่อโฮสต์
+
+  Serial.println();
+  Serial.println("Hostname: " + hostname);
+
+  // ตั้ง NodeMCU เป็นโหมด AP พร้อมกับ IP แบบ static
+  WiFi.mode(WIFI_AP);
+
+  WiFi.softAPConfig(local_IP, gateway, subnet); // กำหนดค่า IP
+  WiFi.softAP(hostname.c_str()); // สร้างจุดเชื่อมต่อ WiFi
+
+  IPAddress myIP = WiFi.softAPIP(); // อ่าน IP ที่ได้รับ
+  Serial.println("");
+  Serial.println("WiFi-AP-Mode");
+  Serial.print("AP IP address: ");
+  Serial.println(myIP);
+  digitalWrite(wifiLedPin, HIGH);  // ปิดไฟ LED WiFi ตอนที่เป็นโหมด AP
+  delay(3000);
+  server.on("/", HTTP_handleRoot);
+  server.onNotFound(HTTP_handleRoot);
+  server.begin();
+
+  ArduinoOTA.begin();
+}
+
+void loop() {
+    ArduinoOTA.handle();          // listen for update OTA request from clients
+    server.handleClient();        // listen for HTTP requests from clients
+    
+      command = server.arg("State");          // check HTPP request, if has arguments "State" then saved the value
+      if (command == "F") Forward();          // check string then call a function or set a value
+      else if (command == "B") Backward();
+      else if (command == "R") TurnRight();
+      else if (command == "L") TurnLeft();
+      else if (command == "G") ForwardLeft();
+      else if (command == "H") BackwardLeft();
+      else if (command == "I") ForwardRight();
+      else if (command == "J") BackwardRight();
+      else if (command == "S") Stop();
+      else if (command == "V") BeepHorn();
+      else if (command == "W") TurnLightOn();
+      else if (command == "w") TurnLightOff();
+      else if (command == "0") SPEED = 83;
+      else if (command == "1") SPEED = 100;
+      else if (command == "2") SPEED = 118;
+      else if (command == "3") SPEED = 135;
+      else if (command == "4") SPEED = 153;
+      else if (command == "5") SPEED = 170;
+      else if (command == "6") SPEED = 187;
+      else if (command == "7") SPEED = 205;
+      else if (command == "8") SPEED = 222;
+      else if (command == "9") SPEED = 240;
+      else if (command == "q") SPEED = 255;
+      delay(10);
+}
+
+// function prototypes for HTTP handlers
+void HTTP_handleRoot(void) {
+  String html = "<!DOCTYPE html>"
+"<html>"
+  "<head>"
+    "<meta name=\"viewport\" content=\"width=device-width, initial-scale=1, user-scalable=no\"/>"
+    "<style>"
+      "body {"
+        "font-family: Arial, sans-serif;"
+        "text-align: center;"
+        "background-color: #ccc;"
+      "}"
+      ".button {"
+        "display: inline-block;"
+        "border: 2px solid #000;"
+        "background-color: #fff;"
+        "width: 200px;"
+        "height: 300px;"
+        "cursor: pointer;"
+        "transition: background-color .3s ease-in-out;"
+      "}"
+      ".button:active {"
+        "background-color: #aaa;"
+      "}"
+      "#container {"
+        "display: flex;"
+        "justify-content: space-between;"
+        "align-items: center;"
+        "height: 100vh;"
+      "}"
+      "#vertical {"
+        "display: flex;"
+        "flex-direction: column;"
+        "justify-content: space-around;"
+      "}"
+      "#horizontal {"
+        "display: flex;"
+        "justify-content: space-around;"
+        "align-items: center;"
+        "height: 100%;"
+      "}"
+    "</style>"
+    "<script>"
+      "function sendCommand(command) {"
+        "var xhr = new XMLHttpRequest();"
+        "xhr.open(\"GET\", \"/?State=\" + command, true);"
+        "xhr.send();"
+      "}"
+    "</script>"
+  "</head>"
+  "<body>"
+    "<div id=\"container\">"
+      "<div id=\"vertical\">"
+        "<div class=\"button\" id=\"up\" ontouchstart=\"sendCommand('F')\" ontouchend=\"sendCommand('S')\"></div>"
+        "<div class=\"button\" id=\"down\" ontouchstart=\"sendCommand('B')\" ontouchend=\"sendCommand('S')\"></div>"
+      "</div>"
+      "<div id=\"horizontal\">"
+        "<div class=\"button\" id=\"left\" ontouchstart=\"sendCommand('L')\" ontouchend=\"sendCommand('S')\"></div>"
+        "<div class=\"button\" id=\"right\" ontouchstart=\"sendCommand('R')\" ontouchend=\"sendCommand('S')\"></div>"
+      "</div>"
+    "</div>"
+  "</body>"
+"</html>"
+;
+  server.send(10, "text/html", html);
+  if(server.hasArg("State")) {
+     Serial.println(server.arg("State"));
+  }
+}
+
+
+void handleNotFound(){
+  server.send(404, "text/plain", "404: Not found"); // Send HTTP status 404 (Not Found) when there's no handler for the URI in the request
+}
+
+// function to move forward
+void Forward(){ 
+  digitalWrite(DIR_A, HIGH);
+  digitalWrite(DIR_B, HIGH);
+  analogWrite(PWM_A, SPEED);
+  analogWrite(PWM_B, SPEED);
+}
+
+// function to move backward
+void Backward(){
+  digitalWrite(DIR_A, LOW);
+  digitalWrite(DIR_B, LOW);
+  analogWrite(PWM_A, SPEED);
+  analogWrite(PWM_B, SPEED);
+}
+
+// function to turn right
+void TurnRight(){
+  digitalWrite(DIR_A, LOW);
+  digitalWrite(DIR_B, HIGH);
+  analogWrite(PWM_A, SPEED/speed_Coeff);
+  analogWrite(PWM_B, SPEED/speed_Coeff);
+}
+
+// function to turn left
+void TurnLeft(){
+  digitalWrite(DIR_A, HIGH);
+  digitalWrite(DIR_B, LOW);
+  analogWrite(PWM_A, SPEED/speed_Coeff);
+  analogWrite(PWM_B, SPEED/speed_Coeff);
+}
+
+// function to move forward left
+void ForwardLeft(){
+  digitalWrite(DIR_A, HIGH);
+  digitalWrite(DIR_B, HIGH);
+  analogWrite(PWM_A, SPEED);
+  analogWrite(PWM_B, SPEED/speed_Coeff);
+}
+
+// function to move backward left
+void BackwardLeft(){
+  digitalWrite(DIR_A, LOW);
+  digitalWrite(DIR_B, LOW);
+  analogWrite(PWM_A, SPEED);
+  analogWrite(PWM_B, SPEED/speed_Coeff);
+}
+
+// function to move forward right
+void ForwardRight(){
+  digitalWrite(DIR_A, HIGH);
+  digitalWrite(DIR_B, HIGH);
+  analogWrite(PWM_A, SPEED/speed_Coeff);
+  analogWrite(PWM_B, SPEED);
+}
+
+// function to move backward left
+void BackwardRight(){ 
+  digitalWrite(DIR_A, LOW);
+  digitalWrite(DIR_B, LOW);
+  analogWrite(PWM_A, SPEED/speed_Coeff);
+  analogWrite(PWM_B, SPEED);
+}
+
+// function to stop motors
+void Stop(){  
+  digitalWrite(DIR_A, LOW);
+  digitalWrite(DIR_B, LOW);
+  analogWrite(PWM_A, 0);
+  analogWrite(PWM_B, 0);
+}
+
+// function to beep a buzzer
+void BeepHorn(){
+  digitalWrite(buzPin, HIGH);
+  delay(150);
+  digitalWrite(buzPin, LOW);
+  delay(80);
+}
+
+// function to turn on LED
+void TurnLightOn(){
+  digitalWrite(ledPin, HIGH);
+}
+
+// function to turn off LED
+void TurnLightOff(){
+  digitalWrite(ledPin, LOW);
+}
