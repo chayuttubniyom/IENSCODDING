@@ -2,10 +2,10 @@
 #include <ESP8266WebServer.h>
 #include <ArduinoOTA.h>
 
-int IN_1A = D1;
-int IN_2A = D2;
-int IN_1B = D3;
-int IN_2B = D4;
+int IN_1A = D5;
+int IN_2A = D6;
+int IN_1B = D7;
+int IN_2B = D8;
 
 const int PWM_A = D5;
 const int PWM_B = D6;
