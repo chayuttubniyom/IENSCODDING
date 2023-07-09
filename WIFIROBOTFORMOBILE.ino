@@ -7,8 +7,8 @@ int IN_2A = D6;
 int IN_1B = D7;
 int IN_2B = D8;
 
-const int PWM_A = D5;
-const int PWM_B = D6;
+const int PWM_A = D9;
+const int PWM_B = D10;
 
 String command;
 float SPEED = 225;
