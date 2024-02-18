@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no"/>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            background-color: #ccc;
+        }
+
+        .button {
+            display: inline-block;
+            border: 3px solid #000;
+            background-color: #fff;
+            width: 25vw;
+            height: 45vh;
+            cursor: pointer;
+            transition: background-color .3s ease-in-out;
+        }
+
+        .button:active {
+            background-color: #aaa;
+        }
+
+        #container {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            height: 95vh;
+        }
+
+        #vertical {
+            display: flex;
+            flex-direction: column;
+            justify-content: space-around;
+        }
+
+        #horizontal {
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+            height: 100%;
+        }
+    </style>
+    <script>
+        function sendCommand(command) {
+            var xhr = new XMLHttpRequest();
+            xhr.open("GET", "/?State=" + command, true);
+            xhr.send();
+        }
+    </script>
+</head>
+<body>
+<div id="container">
+    <div id="vertical">
+        <div class="button" id="up" ontouchstart="sendCommand('F')" ontouchend="sendCommand('S')"></div>
+        <div class="button" id="down" ontouchstart="sendCommand('B')" ontouchend="sendCommand('S')"></div>
+    </div>
+    <div id="horizontal">
+        <div class="button" id="left" ontouchstart="sendCommand('L')" ontouchend="sendCommand('S')"></div>
+        <div class="button" id="right" ontouchstart="sendCommand('R')" ontouchend="sendCommand('S')"></div>
+    </div>
+</div>
+</body>
+</html>
